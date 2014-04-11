@@ -63,7 +63,7 @@ public class PartitionManager {
         String path = committedPath();
         try {
             Map<Object, Object> json = _state.readJSON(path);
-            LOG.info("Read partition information from: " + path +  " --> " + json );
+            LOG.debug("Read partition information from: " + path +  " --> " + json );
             if (json != null) {
                 jsonTopologyId = (String) ((Map<Object, Object>) json.get("topology")).get("id");
                 jsonOffset = (Long) json.get("offset");
@@ -74,16 +74,16 @@ public class PartitionManager {
 
         if (jsonTopologyId == null || jsonOffset == null) { // failed to parse JSON?
             _committedTo = KafkaUtils.getOffset(_consumer, spoutConfig.topic, id.partition, spoutConfig);
-            LOG.info("No partition information found, using configuration to determine offset");
+            LOG.debug("No partition information found, using configuration to determine offset");
         } else if (!topologyInstanceId.equals(jsonTopologyId) && spoutConfig.forceFromStart) {
             _committedTo = KafkaUtils.getOffset(_consumer, spoutConfig.topic, id.partition, spoutConfig.startOffsetTime);
-            LOG.info("Topology change detected and reset from start forced, using configuration to determine offset");
+            LOG.debug("Topology change detected and reset from start forced, using configuration to determine offset");
         } else {
             _committedTo = jsonOffset;
-            LOG.info("Read last commit offset from zookeeper: " + _committedTo + "; old topology_id: " + jsonTopologyId + " - new topology_id: " + topologyInstanceId );
+            LOG.debug("Read last commit offset from zookeeper: " + _committedTo + "; old topology_id: " + jsonTopologyId + " - new topology_id: " + topologyInstanceId );
         }
 
-        LOG.info("Starting " + _partition + " from offset " + _committedTo);
+        LOG.debug("Starting " + _partition + " from offset " + _committedTo);
         _emittedToOffset = _committedTo;
 
         _fetchAPILatencyMax = new CombinedMetric(new MaxMetric());
@@ -140,7 +140,7 @@ public class PartitionManager {
         _fetchAPIMessageCount.incrBy(numMessages);
 
         if (numMessages > 0) {
-            LOG.info("Fetched " + numMessages + " messages from: " + _partition);
+            LOG.debug("Fetched " + numMessages + " messages from: " + _partition);
         }
         for (MessageAndOffset msg : msgs) {
             _pending.add(_emittedToOffset);
@@ -148,7 +148,7 @@ public class PartitionManager {
             _emittedToOffset = msg.nextOffset();
         }
         if (numMessages > 0) {
-            LOG.info("Added " + numMessages + " messages from: " + _partition + " to internal buffers");
+            LOG.debug("Added " + numMessages + " messages from: " + _partition + " to internal buffers");
         }
     }
 
@@ -176,7 +176,7 @@ public class PartitionManager {
     public void commit() {
         long lastCompletedOffset = lastCompletedOffset();
         if (lastCompletedOffset != lastCommittedOffset()) {
-            LOG.info("Writing last completed offset (" + lastCompletedOffset + ") to ZK for " + _partition + " for topology: " + _topologyInstanceId);
+            LOG.debug("Writing last completed offset (" + lastCompletedOffset + ") to ZK for " + _partition + " for topology: " + _topologyInstanceId);
             Map<Object, Object> data = ImmutableMap.builder()
                     .put("topology", ImmutableMap.of("id", _topologyInstanceId,
                             "name", _stormConf.get(Config.TOPOLOGY_NAME)))
@@ -187,9 +187,9 @@ public class PartitionManager {
                     .put("topic", _spoutConfig.topic).build();
             _state.writeJSON(committedPath(), data);
             _committedTo = lastCompletedOffset;
-            LOG.info("Wrote last completed offset (" + lastCompletedOffset + ") to ZK for " + _partition + " for topology: " + _topologyInstanceId);
+            LOG.debug("Wrote last completed offset (" + lastCompletedOffset + ") to ZK for " + _partition + " for topology: " + _topologyInstanceId);
         } else {
-            LOG.info("No new offset for " + _partition + " for topology: " + _topologyInstanceId);
+            LOG.debug("No new offset for " + _partition + " for topology: " + _topologyInstanceId);
         }
     }
 
